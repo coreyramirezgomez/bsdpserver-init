@@ -306,6 +306,7 @@ install_requirements()
 
 }
 #### Main Run ####
+is_root
 if [ $# -lt 1 ]; then
 	print -R "Missing arguments"
 	usage
@@ -332,7 +333,6 @@ fi
 if [ $DEBUG -eq 1 ]; then
 	print -B "DEBUG: $DEBUG"
 fi
-is_root
 get_system_details
 check_requirements
 setup_docker_env
@@ -342,4 +342,3 @@ start_services
 echo "Tailing Logs..."
 docker exec -it  bsdpy tail -f /var/log/bsdpserver.log
 exit 0
-
