@@ -156,7 +156,7 @@ get_ip()
 		[ $DEBUG -eq 1 ] && print -B "Using IP: $IP"
 	else
 		print -R "Invalid network interface: $NETWORK_INTERFACE."
-		IFACES=( $(ifconfig -s | awk 'NR>1 {print $1}') )
+		IFACES=( $(ifconfig  -a | sed -e 's/[ \t].*//' -e 's/://g' -e '/^\(lo\|\)$/d') )
 		count=0
 		for i in "${IFACES[@]}"
 		do
