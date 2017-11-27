@@ -1,23 +1,26 @@
 #!/bin/bash
 
 #### Global Variables ####
+##### Dyanmic Varibles (set by flags) #####
 DEBUG=0
 VERBOSE=""
-CONTAINERS=("macadmins/tftpd" "macadmins/netboot-httpd" "bruienne/bsdpy:1.0")
 BOOT_IMAGES_PATH="/nbi"
 NETWORK_INTERFACE="eth0"
-IP=""
+##### Static Variables #####
+CONTAINERS=("macadmins/tftpd" "macadmins/netboot-httpd" "bruienne/bsdpy:1.0")
 max_loops=5
 loops=0
+##### Runtime Varibles #####
+IP=""
 #### Functions ####
 usage()
 {
 	echo ""
 	echo "	Usage for $0:"
-	echo "	Optional Flags:"
 	echo "		-h: Display this dialog"
+	echo "		-i interface: Set the network interface to bind to. Default: $NETWORK_INTERFACE"
+	echo "		-p absolute-path: Set the path to the boot images. Default: $BOOT_IMAGES_PATH"
 	echo "		-d: Enable Debugging."
-	echo "	Required Flags:"
 	echo ""
 }
 print()
@@ -127,6 +130,7 @@ get_system_details()
 				r=($(cat "/etc/os-release"))
 				for d in "${r[@]}"
 				do
+					d="$(echo $d | sed -e 's/"//g')"
 					[ $DEBUG -eq 1 ] && print -B "Checking $d for ID..."
 					if [[ "$(echo "$d" | cut -d"=" -f 1)" == "ID" ]];then
 						OS="$(echo "$d" | cut -d"=" -f 2)"
@@ -148,7 +152,7 @@ get_ip()
 {
 	ifconfig "$NETWORK_INTERFACE" >& /dev/null
 	if [ $? -eq 0 ];then
-		IP="$(ifconfig "$NETWORK_INTERFACE" >& /dev/null | awk '/inet / {print $2}'|sed -e 's/inet//g' -e 's/addr://g')"
+		IP="$(ifconfig "$NETWORK_INTERFACE" | awk '/inet / {print $2}'|sed -e 's/inet//g' -e 's/addr://g')"
 		[ $DEBUG -eq 1 ] && print -B "Using IP: $IP"
 	else
 		print -R "Invalid network interface: $NETWORK_INTERFACE."
@@ -159,19 +163,21 @@ get_ip()
 			print -Y "[$count] $i"
 			((count++))
 		done
-		selection=$(expr $count + 1)
+		select=$(expr $count + 1)
 		while [ "$select" -gt "${#IFACES[@]}" -o "$select" -lt 0 ]
 		do
 			print -n -Y "Select an interface: "
 			read -n 1 select
+			print ""
 			if [[ $select =~ ^-?[0-9]+$ ]];then
 				[ $DEBUG -eq 1 ] && print -B "$select is a number."
 			else
 				print -R "Invalid entry. Try again."
-				selection=$(expr $count + 1)
+				select=$(expr $count + 1)
 			fi
 		done
 		NETWORK_INTERFACE="${IFACES[$select]}"
+		[ $DEBUG -eq 1 ] && print -B "Using Network interface: $NETWORK_INTERFACE"
 		get_ip
 	fi
 }
@@ -216,7 +222,7 @@ get_user_reply()
 		print -R "Missing question."
 		exit 1
 	fi
-	print -n -Y "$1 [y/n]"
+	print -n -Y "$1 [y/n] "
 	read -n 1 reply
 	print ""
 	case "$reply" in
@@ -312,18 +318,23 @@ if [ $# -lt 1 ]; then
 	usage
 	exit 1
 else
-	while getopts "hd" opt
+	while getopts "hi:p:d" opt
 	do
 		case "$opt" in
 			"h")
 				usage
 				;;
+			"i")
+				NETWORK_INTERFACE="$OPTARG"
+				;;
+			"p")
+				BOOT_IMAGES_PATH="$OPTARG"
+				;;
 			"d")
 				DEBUG=1
 				VERBOSE="v"
 				;;
-			"*")
-				print -R "Unrecognized Argument: $opt"
+			* | :)
 				usage
 				exit 1
 				;;
@@ -339,6 +350,6 @@ setup_docker_env
 get_ip
 setup_image_path
 start_services
-echo "Tailing Logs..."
-docker exec -it  bsdpy tail -f /var/log/bsdpserver.log
+print -B "Tailing Logs..."
+docker exec -it bsdpy tail -f /var/log/bsdpserver.log
 exit 0
