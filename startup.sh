@@ -313,36 +313,33 @@ install_requirements()
 }
 #### Main Run ####
 is_root
-if [ $# -lt 1 ]; then
-	print -R "Missing arguments"
-	usage
-	exit 1
-else
-	while getopts "hi:p:d" opt
-	do
-		case "$opt" in
-			"h")
-				usage
-				;;
-			"i")
-				NETWORK_INTERFACE="$OPTARG"
-				;;
-			"p")
-				BOOT_IMAGES_PATH="$OPTARG"
-				;;
-			"d")
-				DEBUG=1
-				VERBOSE="v"
-				;;
-			* | :)
-				usage
-				exit 1
-				;;
-		esac
-	done
-fi
+while getopts "hi:p:d" opt
+do
+	case "$opt" in
+		"h")
+			usage
+			;;
+		"i")
+			NETWORK_INTERFACE="$OPTARG"
+			;;
+		"p")
+			BOOT_IMAGES_PATH="$OPTARG"
+			;;
+		"d")
+			DEBUG=1
+			VERBOSE="v"
+			;;
+		* | :)
+			usage
+			exit 1
+			;;
+	esac
+done
 if [ $DEBUG -eq 1 ]; then
 	print -B "DEBUG: $DEBUG"
+	print -B "VERBOSE: $VERBOSE"
+	print -B "NETWORK_INTERFACE: $NETWORK_INTERFACE"
+	print -B "BOOT_IMAGES_PATH: $BOOT_IMAGES_PATH"
 fi
 get_system_details
 check_requirements
@@ -350,6 +347,7 @@ setup_docker_env
 get_ip
 setup_image_path
 start_services
-print -B "Tailing Logs..."
+print -B "Tailing Logs via \"docker exec -it bsdpy tail -f /var/log/bsdpserver.log\" (ctrl-c to stop)"
+docker exec -it bsdpy tail -50 /var/log/bsdpserver.log 
 docker exec -it bsdpy tail -f /var/log/bsdpserver.log
 exit 0
